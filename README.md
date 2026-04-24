@@ -1,6 +1,6 @@
-# Sentinel
+# Sentinel-Sentiment-Analysis
 
-A Dockerized trading sentiment engine that scrapes Reddit and NewsAPI, analyzes sentiment via a remote Ollama LLM instance, and surfaces narrative shifts through a Streamlit dashboard.
+Academic research into financial NLP.
 
 ## Architecture
 
