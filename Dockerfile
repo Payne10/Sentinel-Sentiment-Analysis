@@ -5,23 +5,18 @@ FROM python:${PYTHON_VERSION}-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache gcc musl-dev postgresql-dev
 
-# Create worker venv and install dependencies
-RUN python -m venv /opt/venv-worker
-COPY requirements.txt /tmp/requirements.txt
-RUN /opt/venv-worker/bin/pip install --no-cache-dir -r /tmp/requirements.txt
-
-# Create dashboard venv and install dependencies
-RUN python -m venv /opt/venv-dashboard
-COPY requirements.txt /tmp/requirements_worker.txt
-COPY requirements-dashboard.txt /tmp/requirements_dashboard.txt
-RUN /opt/venv-dashboard/bin/pip install --no-cache-dir -r /tmp/requirements_worker.txt
-RUN /opt/venv-dashboard/bin/pip install --no-cache-dir -r /tmp/requirements_dashboard.txt
+# Single venv with all deps
+RUN python -m venv /opt/venv
+COPY requirements.txt .
+COPY requirements-dashboard.txt .
+RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
+RUN /opt/venv/bin/pip install --no-cache-dir -r requirements-dashboard.txt
 
 # --- Worker target ---
 FROM python:${PYTHON_VERSION}-alpine AS worker
 WORKDIR /app
 RUN apk add --no-cache libpq
-COPY --from=builder /opt/venv-worker /opt/venv
+COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 COPY database.py worker.py ./
 CMD ["python", "worker.py"]
@@ -30,7 +25,7 @@ CMD ["python", "worker.py"]
 FROM python:${PYTHON_VERSION}-alpine AS dashboard
 WORKDIR /app
 RUN apk add --no-cache libpq
-COPY --from=builder /opt/venv-dashboard /opt/venv
+COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 COPY database.py dashboard.py ./
 EXPOSE 8501
