@@ -5,18 +5,17 @@ FROM python:${PYTHON_VERSION}-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache gcc musl-dev postgresql-dev
 
-# Worker venv
+# Create worker venv and install dependencies
 RUN python -m venv /opt/venv-worker
-ENV PATH="/opt/venv-worker/bin:$PATH"
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt /tmp/requirements.txt
+RUN /opt/venv-worker/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 
-# Dashboard venv (worker deps + dashboard extras)
+# Create dashboard venv and install dependencies
 RUN python -m venv /opt/venv-dashboard
-ENV PATH="/opt/venv-dashboard/bin:$PATH"
-RUN pip install --no-cache-dir -r requirements.txt
-COPY requirements-dashboard.txt .
-RUN pip install --no-cache-dir -r requirements-dashboard.txt
+COPY requirements.txt /tmp/requirements_worker.txt
+COPY requirements-dashboard.txt /tmp/requirements_dashboard.txt
+RUN /opt/venv-dashboard/bin/pip install --no-cache-dir -r /tmp/requirements_worker.txt
+RUN /opt/venv-dashboard/bin/pip install --no-cache-dir -r /tmp/requirements_dashboard.txt
 
 # --- Worker target ---
 FROM python:${PYTHON_VERSION}-alpine AS worker
