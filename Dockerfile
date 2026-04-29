@@ -3,7 +3,7 @@ ARG PYTHON_VERSION=3.12
 
 FROM python:${PYTHON_VERSION}-alpine AS builder
 WORKDIR /app
-RUN apk add --no-cache gcc musl-dev postgresql-dev libffi-dev
+RUN apk add --no-cache gcc musl-dev postgresql-dev
 
 # Worker venv
 RUN python -m venv /opt/venv-worker

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Sentinel is a Dockerized trading sentiment engine. It scrapes Reddit (PRAW) and NewsAPI, sends collected text to a remote Ollama LLM instance (native tool calling), and persists sentiment scores into PostgreSQL. A Streamlit dashboard visualizes the data.
+Sentinel is a Dockerized trading sentiment engine. It fetches news via **NewsAPI**, sends collected text to a remote Ollama LLM instance (native tool calling), and persists sentiment scores into PostgreSQL. A Streamlit dashboard visualizes the data.
 
 **Primary Goal:** Surface narrative shifts and bullish momentum by tracking per-ticker sentiment scores and their 24-hour deltas.
 
@@ -13,7 +13,7 @@ Sentinel is a Dockerized trading sentiment engine. It scrapes Reddit (PRAW) and 
 | Service | Tech | Role |
 |---------|------|------|
 | `db` | PostgreSQL 16 (Alpine) | Stores `sentiments` and `config` tables |
-| `worker` | Python 3.12 (Alpine) | Scrapers + Ollama analysis loop via APScheduler (every 4h) |
+| `worker` | Python 3.12 (Alpine) | NewsAPI fetcher + Ollama analysis loop via APScheduler (every 4h) |
 | `dashboard` | Streamlit (Alpine) | UI on port `8501`. Polls Ollama for models. Lets users switch the active model. |
 
 All runtime configuration (API keys, Ollama IP, model name) is sourced from `.env`. The `docker-compose.yml` does **not** hardcode secrets.
@@ -26,7 +26,7 @@ All runtime configuration (API keys, Ollama IP, model name) is sourced from `.en
 |------|---------|
 | `docker-compose.yml` | 3-service orchestration with healthchecks |
 | `Dockerfile` | Multi-stage Alpine build (`builder` → `worker` / `dashboard`) |
-| `worker.py` | PRAW + NewsAPI scrapers. Calls Ollama `/api/chat` with tools. Reads active model from DB `config` table |
+| `worker.py` | NewsAPI scraper. Calls Ollama `/api/chat` with tools. Reads active model from DB `config` table |
 | `dashboard.py` | Streamlit. Searchable ticker table, LEAPS alert, 7-day Plotly trends, Ollama model selector |
 | `database.py` | SQLAlchemy models, session management, `record_sentiment` tool function, delta calculations |
 | `.env.example` | Template of all required env vars |
@@ -88,14 +88,10 @@ All values must be set in `.env`. **Never commit `.env`**.
 | `POSTGRES_DB` | Yes | |
 | `POSTGRES_HOST` | Yes | Usually `db` inside Docker network |
 | `POSTGRES_PORT` | Yes | Usually `5432` |
-| `REDDIT_CLIENT_ID` | Yes | From Reddit app (script type) |
-| `REDDIT_CLIENT_SECRET` | Yes | |
-| `REDDIT_USER_AGENT` | Yes | Format: `python:Sentinel:v1.0 (by /u/username)` |
 | `NEWS_API_KEY` | Yes | |
 | `OLLAMA_HOST` | Yes | e.g. `http://192.168.1.100:11434` |
 | `INITIAL_MODEL` | No | Fallback model if `config` table has no selection |
 | `WATCHLIST` | No | e.g. `AAPL,MSFT,NVDA` |
-| `SUBREDDITS` | No | e.g. `wallstreetbets,stocks` |
 
 ---
 
@@ -112,7 +108,7 @@ If you add a Python dependency that requires a C compiler, add the necessary Alp
 
 ## Worker Scheduling
 
-APScheduler runs `run_analysis()` on an **interval of 4 hours**. An initial run fires immediately on container start. Do not lower the interval below Reddit/NewsAPI rate limits unnecessarily.
+APScheduler runs `run_analysis()` on an **interval of 4 hours**. An initial run fires immediately on container start. Do not lower the interval below NewsAPI rate limits unnecessarily.
 
 ---
 

@@ -5,35 +5,24 @@ import time
 from datetime import datetime
 from typing import List
 
-import praw
 from newsapi import NewsApiClient
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from database import init_db, record_sentiment, get_config, set_config
+from database import init_db, record_sentiment, get_config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("sentinel_worker")
 
-REDDIT_CID = os.getenv("REDDIT_CLIENT_ID")
-REDDIT_SECRET = os.getenv("REDDIT_CLIENT_SECRET")
-REDDIT_AGENT = os.getenv("REDDIT_USER_AGENT")
 NEWS_KEY = os.getenv("NEWS_API_KEY")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://192.168.1.100:11434")
 WATCHLIST = [t.strip().upper() for t in os.getenv("WATCHLIST", "AAPL,MSFT,NVDA,TSLA,AMZN").split(",") if t.strip()]
-SUBREDDITS = [s.strip() for s in os.getenv("SUBREDDITS", "wallstreetbets,stocks,investing").split(",") if s.strip()]
-
-reddit = None
-if REDDIT_CID and REDDIT_SECRET and REDDIT_AGENT:
-    reddit = praw.Reddit(client_id=REDDIT_CID, client_secret=REDDIT_SECRET, user_agent=REDDIT_AGENT)
-else:
-    logger.warning("Reddit credentials not fully configured. Skipping Reddit scraping.")
 
 newsapi = None
 if NEWS_KEY:
     newsapi = NewsApiClient(api_key=NEWS_KEY)
 else:
-    logger.warning("NewsAPI key not configured. Skipping news scraping.")
+    logger.warning("NewsAPI key not configured. No data will be fetched.")
 
 TOOLS_DEF = [
     {
@@ -75,19 +64,6 @@ def get_active_model() -> str:
     return model
 
 
-def fetch_reddit(ticker: str, limit: int = 10) -> List[str]:
-    texts = []
-    if not reddit:
-        return texts
-    try:
-        for sub in SUBREDDITS:
-            for post in reddit.subreddit(sub).search(ticker, sort="new", time_filter="day", limit=limit):
-                texts.append(f"{post.title}. {post.selftext}")
-    except Exception as e:
-        logger.error(f"Reddit fetch error for {ticker}: {e}")
-    return texts
-
-
 def fetch_news(ticker: str, page_size: int = 5) -> List[str]:
     texts = []
     if not newsapi:
@@ -104,7 +80,7 @@ def fetch_news(ticker: str, page_size: int = 5) -> List[str]:
 def analyze_with_ollama(ticker: str, context: str):
     model = get_active_model()
     prompt = (
-        f"You are a financial sentiment analyst. Based on the following recent Reddit and news context for {ticker}, "
+        f"You are a financial sentiment analyst. Based on the following recent news context for {ticker}, "
         f"determine the overall market sentiment. Use the record_sentiment tool to save your analysis.\n\n"
         f"Context:\n{context}\n\n"
         f"Call the record_sentiment function with the ticker, a score between -1.0 and 1.0, a concise catalyst, and your confidence (0.0-1.0)."
@@ -145,13 +121,11 @@ def analyze_with_ollama(ticker: str, context: str):
 def run_analysis():
     logger.info("Starting analysis run...")
     for ticker in WATCHLIST:
-        reddit_texts = fetch_reddit(ticker)
         news_texts = fetch_news(ticker)
-        all_texts = reddit_texts + news_texts
-        if not all_texts:
+        if not news_texts:
             logger.info(f"No data gathered for {ticker}, skipping.")
             continue
-        context = "\n".join(all_texts)[:4000]
+        context = "\n".join(news_texts)[:4000]
         analyze_with_ollama(ticker, context)
         time.sleep(1)
     logger.info("Analysis run complete.")

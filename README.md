@@ -4,9 +4,11 @@ Academic research into financial NLP.
 
 ## Architecture
 
-- **db**: PostgreSQL 16 (Alpine)
-- **worker**: Python 3.12 (Alpine) — scrapers + Ollama analysis loop
-- **dashboard**: Streamlit — sentiment table, LEAPS alerts, and 7-day Plotly trends
+| Service | Tech | Role |
+|---------|------|------|
+| `db` | PostgreSQL 16 (Alpine) | Stores `sentiments` and `config` tables |
+| `worker` | Python 3.12 (Alpine) | NewsAPI fetcher + Ollama analysis loop (every 4h) |
+| `dashboard` | Streamlit (Alpine) | UI on port `8501`. Polls Ollama for models. Lets users switch the active model. |
 
 ## Quick Start
 
@@ -33,9 +35,7 @@ The Streamlit dashboard polls the Ollama host for available models and lets you 
 | Variable | Description |
 |----------|-------------|
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Postgres credentials |
-| `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` / `REDDIT_USER_AGENT` | Reddit API (PRAW) |
 | `NEWS_API_KEY` | NewsAPI key |
 | `OLLAMA_HOST` | Remote Ollama URL (e.g. `http://192.168.1.100:11434`) |
 | `INITIAL_MODEL` | Default Ollama model |
 | `WATCHLIST` | Comma-separated stock tickers to analyze |
-| `SUBREDDITS` | Comma-separated subreddits to search |
