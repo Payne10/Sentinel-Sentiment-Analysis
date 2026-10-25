@@ -2,7 +2,7 @@ services:
   db:
     image: postgres:16-alpine
     container_name: sentinel_db
-    restart: unless-stopped
+    restart: "no"
     env_file: .env
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -17,7 +17,7 @@ services:
       context: .
       target: worker
     container_name: sentinel_worker
-    restart: unless-stopped
+    restart: "no"
     env_file: .env
     depends_on:
       db:
@@ -32,7 +32,7 @@ services:
       context: .
       target: dashboard
     container_name: sentinel_dashboard
-    restart: unless-stopped
+    restart: "no"
     env_file: .env
     ports:
       - "8501:8501"
